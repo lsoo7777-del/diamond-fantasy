@@ -28,24 +28,25 @@ function entryToPlayer(entry) {
 }
 
 export default function MatchupPage({ openPlayer, espnData }) {
-  const rawMatchup = espnData?.matchup;
-  const [me,  setMe]  = useState(rawMatchup?.matchup?.me  || MATCHUP.me);
-  const [opp, setOpp] = useState(rawMatchup?.matchup?.opp || MATCHUP.opp);
+  // espnData.matchup is already the transformed { me, opp } object
+  const matchup = espnData?.matchup;
+  const [me,  setMe]  = useState(matchup?.me  || MATCHUP.me);
+  const [opp, setOpp] = useState(matchup?.opp || MATCHUP.opp);
   const [flash, setFlash] = useState(null);
 
   // Sync when real data arrives
   useEffect(() => {
-    if (rawMatchup?.matchup?.me)  setMe(rawMatchup.matchup.me);
-    if (rawMatchup?.matchup?.opp) setOpp(rawMatchup.matchup.opp);
-  }, [rawMatchup]);
+    if (matchup?.me)  setMe(matchup.me);
+    if (matchup?.opp) setOpp(matchup.opp);
+  }, [matchup]);
 
   // Real team names
   const myTeamName  = espnData?.myTeam
     ? `${espnData.myTeam.location || ""} ${espnData.myTeam.nickname || ""}`.trim()
-    : "Triple Plays";
-  const myTeamAbbr  = espnData?.myTeam?.abbrev?.slice(0, 2) || "TR";
-  const oppTeamRaw  = rawMatchup?.matchup?.opp?.teamId
-    ? espnData?.league?.teams?.find((t) => t.id === rawMatchup.matchup.opp.teamId)
+    : "My Team";
+  const myTeamAbbr  = espnData?.myTeam?.abbrev?.slice(0, 2) || "??";
+  const oppTeamRaw  = matchup?.opp?.teamId
+    ? espnData?.league?.teams?.find((t) => t.id === matchup.opp.teamId)
     : null;
   const oppTeamName = oppTeamRaw
     ? `${oppTeamRaw.location || ""} ${oppTeamRaw.nickname || ""}`.trim()

@@ -10,7 +10,7 @@ export function ConnectESPNModal({ onClose, onConnected }) {
   const [swid,   setSwid]   = useState("");
   const [s2,     setS2]     = useState("");
   const [leagueId, setLeagueId] = useState("");
-  const [year,   setYear]   = useState("2025");
+  const [year,   setYear]   = useState("2026");
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
 

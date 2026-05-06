@@ -231,7 +231,7 @@ export function StandingsPage({ espnData, loading }) {
     <div className="page col gap-16">
       <div className="row gap-16" style={{ alignItems: "flex-end" }}>
         <div className="col gap-6">
-          <div className="eyebrow">Standings · 2025 · Points league</div>
+          <div className="eyebrow">Standings · 2026 · Points league</div>
           <h1 className="h1">{leagueName}</h1>
           <div className="sub">Top {playoffSpots} make the playoffs.</div>
         </div>

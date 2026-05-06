@@ -114,13 +114,16 @@ export default function App() {
         : null;
       const myTeamId = myTeam?.id;
 
-      // Fetch matchup for current period
+      // Fetch matchup for current period — store the transformed { me, opp } object directly
       let matchup = null;
       if (myTeamId && league?.scoringPeriodId) {
         const mRes = await fetch(
           `/api/espn/matchup?scoringPeriodId=${league.scoringPeriodId}&teamId=${myTeamId}`
         );
-        if (mRes.ok) matchup = await mRes.json();
+        if (mRes.ok) {
+          const mData = await mRes.json();
+          matchup = mData.matchup ?? null; // { me: {...}, opp: {...} }
+        }
       }
 
       // Fetch roster

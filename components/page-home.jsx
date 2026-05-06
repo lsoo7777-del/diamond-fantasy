@@ -4,18 +4,20 @@ import { MATCHUP, MY_ROSTER, PLAYERS, STANDINGS, GAMES } from "@/lib/data";
 import { fmt, Icons, PlayerChip, Sparkline, Donut, Diamond, TeamMark } from "./atoms";
 
 export default function HomePage({ go, openPlayer, espnData, loading }) {
-  // Use real matchup data if available, fall back to mock
-  const matchupRaw = espnData?.matchup;
-  const me  = matchupRaw?.me  || MATCHUP.me;
-  const opp = matchupRaw?.opp || MATCHUP.opp;
+  // espnData.matchup is already the transformed { me, opp } object
+  const matchupData = espnData?.matchup;
+  const me  = matchupData?.me  || MATCHUP.me;
+  const opp = matchupData?.opp || MATCHUP.opp;
 
   // Real team names from ESPN
-  const myTeamName  = espnData?.myTeam ? `${espnData.myTeam.location || ""} ${espnData.myTeam.nickname || ""}`.trim() : "Triple Plays";
-  const myTeamAbbr  = espnData?.myTeam?.abbrev || "TR";
+  const myTeamName = espnData?.myTeam
+    ? `${espnData.myTeam.location || ""} ${espnData.myTeam.nickname || ""}`.trim()
+    : "My Team";
+  const myTeamAbbr = espnData?.myTeam?.abbrev?.slice(0, 2) || "??";
 
   // Find opponent team from league teams
-  const oppTeamRaw  = matchupRaw?.opp?.teamId
-    ? espnData?.league?.teams?.find((t) => t.id === matchupRaw.opp.teamId)
+  const oppTeamRaw = matchupData?.opp?.teamId
+    ? espnData?.league?.teams?.find((t) => t.id === matchupData.opp.teamId)
     : null;
   const oppTeamName = oppTeamRaw ? `${oppTeamRaw.location || ""} ${oppTeamRaw.nickname || ""}`.trim() : "Bunt Force One";
   const oppTeamAbbr = oppTeamRaw?.abbrev || "BF";
