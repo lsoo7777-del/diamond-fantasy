@@ -47,6 +47,10 @@ export default function App() {
   ]);
   const [activeLeague, setActiveLeague] = useState("espn-1");
 
+  // Real ESPN data
+  const [espnData,    setEspnData]    = useState(null);
+  const [dataLoading, setDataLoading] = useState(false);
+
   const sync = {
     status: leagues.find((l) => l.id === activeLeague)?.status === "connected" ? "ok" : "disconnected",
     lastAgo: leagues.find((l) => l.id === activeLeague)?.lastSync || "—",
@@ -62,7 +66,7 @@ export default function App() {
     document.documentElement.style.setProperty("--accent-soft", `color-mix(in oklab, ${accent} 18%, transparent)`);
   }, [theme, accent, density]);
 
-  // Check ESPN connection on mount
+  // Check ESPN connection on mount, then load data
   useEffect(() => {
     fetch("/api/espn/auth")
       .then((r) => r.json())
@@ -75,10 +79,65 @@ export default function App() {
                 : l
             )
           );
+          loadESPNData(data.swidClean);
         }
       })
       .catch(() => {});
   }, []);
+
+  async function loadESPNData(swidClean) {
+    setDataLoading(true);
+    try {
+      const [leagueRes, standingsRes] = await Promise.all([
+        fetch("/api/espn/league"),
+        fetch("/api/espn/standings"),
+      ]);
+
+      const league    = leagueRes.ok    ? await leagueRes.json()    : null;
+      const stData    = standingsRes.ok ? await standingsRes.json() : null;
+      const standings = stData?.standings || [];
+
+      // Update league name in sidebar
+      if (league?.settings?.name) {
+        setLeagues((prev) =>
+          prev.map((l) =>
+            l.id === "espn-1" ? { ...l, name: league.settings.name } : l
+          )
+        );
+      }
+
+      // Find user's team by matching SWID
+      const myTeam = swidClean
+        ? league?.teams?.find((t) => (t.primaryOwner || "").toLowerCase() === swidClean)
+        : null;
+      const myTeamId = myTeam?.id;
+
+      // Fetch matchup for current period
+      let matchup = null;
+      if (myTeamId && league?.scoringPeriodId) {
+        const mRes = await fetch(
+          `/api/espn/matchup?scoringPeriodId=${league.scoringPeriodId}&teamId=${myTeamId}`
+        );
+        if (mRes.ok) matchup = await mRes.json();
+      }
+
+      // Fetch roster
+      let roster = null;
+      if (myTeamId) {
+        const rRes = await fetch("/api/espn/roster");
+        if (rRes.ok) {
+          const raw = await rRes.json();
+          const myRaw = raw?.teams?.find((t) => t.id === myTeamId);
+          roster = myRaw?.roster?.entries || null;
+        }
+      }
+
+      setEspnData({ league, standings, matchup, roster, myTeam, myTeamId });
+    } catch (e) {
+      console.error("Failed to load ESPN data:", e);
+    }
+    setDataLoading(false);
+  }
 
   // ⌘K
   useEffect(() => {
@@ -96,7 +155,7 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const handleConnected = (creds) => {
+  const handleConnected = () => {
     setLeagues((prev) =>
       prev.map((l) =>
         l.id === "espn-1"
@@ -105,20 +164,24 @@ export default function App() {
       )
     );
     setConnectOpen(false);
+    fetch("/api/espn/auth")
+      .then((r) => r.json())
+      .then((d) => { if (d.connected) loadESPNData(d.swidClean); })
+      .catch(() => {});
   };
 
   let page;
-  if (route === "home")         page = <HomePage go={setRoute} openPlayer={setOpenId} />;
-  else if (route === "matchup") page = <MatchupPage openPlayer={setOpenId} />;
-  else if (route === "team")    page = <TeamPage openPlayer={setOpenId} />;
-  else if (route === "waivers") page = <WaiversPage openPlayer={setOpenId} />;
-  else if (route === "standings") page = <StandingsPage />;
-  else if (route === "players") page = <PlayersPage openPlayer={setOpenId} />;
+  if (route === "home")           page = <HomePage go={setRoute} openPlayer={setOpenId} espnData={espnData} loading={dataLoading} />;
+  else if (route === "matchup")   page = <MatchupPage openPlayer={setOpenId} espnData={espnData} />;
+  else if (route === "team")      page = <TeamPage openPlayer={setOpenId} espnData={espnData} />;
+  else if (route === "waivers")   page = <WaiversPage openPlayer={setOpenId} espnData={espnData} />;
+  else if (route === "standings") page = <StandingsPage espnData={espnData} loading={dataLoading} />;
+  else if (route === "players")   page = <PlayersPage openPlayer={setOpenId} />;
   else if (route === "watchlist") page = <WatchlistPage openPlayer={setOpenId} />;
-  else if (route === "alerts")  page = <AlertsPage />;
+  else if (route === "alerts")    page = <AlertsPage />;
   else if (route === "integrations") page = <IntegrationsPage leagues={leagues} openConnect={() => setConnectOpen(true)} />;
-  else if (route === "activity") page = <ActivityLogPage />;
-  else page = <HomePage go={setRoute} openPlayer={setOpenId} />;
+  else if (route === "activity")  page = <ActivityLogPage />;
+  else page = <HomePage go={setRoute} openPlayer={setOpenId} espnData={espnData} loading={dataLoading} />;
 
   return (
     <div className="app">
@@ -139,13 +202,10 @@ export default function App() {
       />
 
       <main className="main">
-        {/* ESPN conflict banner */}
         <ConflictBanner conflict={conflict} onResolve={() => setConflict(null)} />
-
         {page}
       </main>
 
-      {/* Player detail slide-over */}
       {openId && (
         <div className="slide-over" onClick={() => setOpenId(null)}>
           <div />
@@ -155,7 +215,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Connect ESPN modal */}
       {connectOpen && (
         <ConnectESPNModal
           onClose={() => setConnectOpen(false)}
@@ -163,7 +222,6 @@ export default function App() {
         />
       )}
 
-      {/* Sync status popover */}
       {syncPop && (
         <SyncStatusPopover
           league={leagues.find((l) => l.id === activeLeague)}

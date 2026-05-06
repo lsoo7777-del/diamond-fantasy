@@ -190,19 +190,23 @@ export function WaiversPage({ openPlayer }) {
 }
 
 // ── Standings ─────────────────────────────────────────────────────────────────
-export function StandingsPage() {
-  const max = Math.max(...STANDINGS.map((s) => s.pf));
+export function StandingsPage({ espnData, loading }) {
+  const rows = espnData?.standings?.length ? espnData.standings : STANDINGS;
+  const leagueName = espnData?.league?.settings?.name || "Diamond Cartel";
+  const playoffSpots = espnData?.league?.settings?.scheduleSettings?.playoffTeamCount || 6;
+
   return (
     <div className="page col gap-16">
       <div className="row gap-16" style={{ alignItems: "flex-end" }}>
         <div className="col gap-6">
-          <div className="eyebrow">Standings · Week 18 · Points league</div>
-          <h1 className="h1">Diamond Cartel</h1>
-          <div className="sub">Top 6 make the playoffs. Regular season ends Week 22.</div>
+          <div className="eyebrow">Standings · 2025 · Points league</div>
+          <h1 className="h1">{leagueName}</h1>
+          <div className="sub">Top {playoffSpots} make the playoffs.</div>
         </div>
         <div className="spacer" />
         <span className="pill mono">PF tiebreaker</span>
       </div>
+      {loading && <div className="muted mono" style={{ fontSize: 12 }}>Loading live standings…</div>}
       <div className="card">
         <table className="tbl">
           <thead>
@@ -213,27 +217,25 @@ export function StandingsPage() {
               <th className="num">L</th>
               <th className="num">PF</th>
               <th className="num">PA</th>
-              <th className="num">Streak</th>
               <th>Owner</th>
             </tr>
           </thead>
           <tbody>
-            {STANDINGS.map((s) => (
+            {rows.map((s) => (
               <tr key={s.rank} style={{ background: s.you ? "rgba(245,213,71,.04)" : undefined }}>
-                <td className="mono" style={{ paddingLeft: 14, color: s.rank <= 6 ? "var(--pos)" : "var(--ink-2)" }}>{s.rank}</td>
+                <td className="mono" style={{ paddingLeft: 14, color: s.rank <= playoffSpots ? "var(--pos)" : "var(--ink-2)" }}>{s.rank}</td>
                 <td>
                   <div className="row gap-10">
                     <TeamMark abbr={s.abbr} size={24} radius={6} />
                     <span style={{ fontWeight: s.you ? 700 : 500 }}>{s.name}</span>
                     {s.you && <span className="tag flat">YOU</span>}
-                    {s.rank <= 6 && <span className="tag pos" style={{ fontSize: 9 }}>PLAYOFFS</span>}
+                    {s.rank <= playoffSpots && <span className="tag pos" style={{ fontSize: 9 }}>PLAYOFFS</span>}
                   </div>
                 </td>
                 <td className="num tnum" style={{ fontWeight: 700 }}>{s.w}</td>
                 <td className="num tnum muted">{s.l}</td>
-                <td className="num tnum">{s.pf.toFixed(1)}</td>
-                <td className="num tnum muted">{s.pa.toFixed(1)}</td>
-                <td className="num"><span className={`tag ${s.streak.startsWith("W") ? "pos" : "neg"}`}>{s.streak}</span></td>
+                <td className="num tnum">{typeof s.pf === "number" ? s.pf.toFixed(1) : s.pf}</td>
+                <td className="num tnum muted">{typeof s.pa === "number" ? s.pa.toFixed(1) : s.pa}</td>
                 <td className="muted" style={{ fontSize: 12 }}>{s.owner}</td>
               </tr>
             ))}

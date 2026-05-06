@@ -75,11 +75,15 @@ export async function GET() {
     return NextResponse.json({ connected: false });
   }
 
+  const swid = cookieStore.get("espn_swid")?.value || "";
+  // Normalize SWID to lowercase without braces for team matching
+  const swidClean = swid.replace(/[{}]/g, "").toLowerCase();
+
   return NextResponse.json({
     connected: true,
     leagueId,
     year,
-    // Never return raw credential values
+    swidClean, // safe to expose — it's a user identifier, not a secret
     credentialsPresent: { swid: hasSwid, s2: hasS2 },
   });
 }

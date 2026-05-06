@@ -3,10 +3,29 @@
 import { MATCHUP, MY_ROSTER, PLAYERS, STANDINGS, GAMES } from "@/lib/data";
 import { fmt, Icons, PlayerChip, Sparkline, Donut, Diamond, TeamMark } from "./atoms";
 
-export default function HomePage({ go, openPlayer }) {
-  const me = MATCHUP.me, opp = MATCHUP.opp;
+export default function HomePage({ go, openPlayer, espnData, loading }) {
+  // Use real matchup data if available, fall back to mock
+  const matchupRaw = espnData?.matchup;
+  const me  = matchupRaw?.me  || MATCHUP.me;
+  const opp = matchupRaw?.opp || MATCHUP.opp;
+
+  // Real team names from ESPN
+  const myTeamName  = espnData?.myTeam ? `${espnData.myTeam.location || ""} ${espnData.myTeam.nickname || ""}`.trim() : "Triple Plays";
+  const myTeamAbbr  = espnData?.myTeam?.abbrev || "TR";
+
+  // Find opponent team from league teams
+  const oppTeamRaw  = matchupRaw?.opp?.teamId
+    ? espnData?.league?.teams?.find((t) => t.id === matchupRaw.opp.teamId)
+    : null;
+  const oppTeamName = oppTeamRaw ? `${oppTeamRaw.location || ""} ${oppTeamRaw.nickname || ""}`.trim() : "Bunt Force One";
+  const oppTeamAbbr = oppTeamRaw?.abbrev || "BF";
+
+  // Real standings
+  const standings = espnData?.standings?.length ? espnData.standings : STANDINGS;
+
   const lead = me.score - opp.score;
-  const pct = me.score / (me.score + opp.score);
+  const total = me.score + opp.score;
+  const pct = total > 0 ? me.score / total : 0.5;
 
   const roster = MY_ROSTER.filter((r) => r.pid).map((r) => {
     const p = PLAYERS.find((p) => p.id === r.pid);
@@ -39,10 +58,10 @@ export default function HomePage({ go, openPlayer }) {
             {/* My team */}
             <div className="col gap-8">
               <div className="row gap-10">
-                <div className="avatar" style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg,var(--accent),#ff9f43)" }}>TR</div>
+                <div className="avatar" style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg,var(--accent),#ff9f43)" }}>{myTeamAbbr.slice(0,2)}</div>
                 <div className="col" style={{ gap: 2 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>Triple Plays <span className="tag flat" style={{ marginLeft: 6 }}>YOU</span></div>
-                  <div className="mono muted" style={{ fontSize: 11 }}>11–6 · #2 overall</div>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>{myTeamName} <span className="tag flat" style={{ marginLeft: 6 }}>YOU</span></div>
+                  <div className="mono muted" style={{ fontSize: 11 }}>{me.score > 0 ? `${fmt(me.score)} pts` : "—"}</div>
                 </div>
               </div>
               <div className="score-big up">{fmt(me.score)}</div>
@@ -68,10 +87,10 @@ export default function HomePage({ go, openPlayer }) {
             <div className="col gap-8" style={{ textAlign: "right" }}>
               <div className="row gap-10" style={{ justifyContent: "flex-end" }}>
                 <div className="col" style={{ gap: 2, textAlign: "right" }}>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>Bunt Force One</div>
-                  <div className="mono muted" style={{ fontSize: 11 }}>9–8 · #5 overall · Theo W.</div>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>{oppTeamName}</div>
+                  <div className="mono muted" style={{ fontSize: 11 }}>{opp.score > 0 ? `${fmt(opp.score)} pts` : "—"}</div>
                 </div>
-                <div className="avatar" style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg,#4ea1ff,#7a5ae0)", color: "white" }}>BF</div>
+                <div className="avatar" style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg,#4ea1ff,#7a5ae0)", color: "white" }}>{oppTeamAbbr.slice(0,2)}</div>
               </div>
               <div className="score-big">{fmt(opp.score)}</div>
               <div className="row gap-12 mono" style={{ fontSize: 11.5, color: "var(--ink-2)", justifyContent: "flex-end" }}>
@@ -155,7 +174,7 @@ export default function HomePage({ go, openPlayer }) {
               <div className="row gap-8 muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em" }}>
                 <span>Standings</span><span className="spacer" /><span>W–L</span>
               </div>
-              {STANDINGS.slice(0, 5).map((s) => (
+              {standings.slice(0, 5).map((s) => (
                 <div key={s.abbr} className="row gap-10" style={{ padding: "4px 0" }}>
                   <div className="mono dim" style={{ width: 14 }}>{s.rank}</div>
                   <TeamMark abbr={s.abbr} size={22} radius={5} />
