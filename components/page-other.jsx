@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PLAYERS, TEAMS, STANDINGS, FREE_AGENTS } from "@/lib/data";
 import { fmt, fmt0, Icons, PlayerChip, TeamMark } from "./atoms";
+
+const POS_LABEL = { 1:"C",2:"1B",3:"2B",4:"3B",5:"SS",7:"OF",8:"DH",9:"SP",11:"RP" };
 
 // ── Player detail slide-over ──────────────────────────────────────────────────
 export function PlayerDetail({ pid, onClose }) {
@@ -126,21 +128,55 @@ function BigChart({ data }) {
 }
 
 // ── Waivers ───────────────────────────────────────────────────────────────────
-export function WaiversPage({ openPlayer }) {
+export function WaiversPage({ openPlayer, espnData }) {
   const [pos, setPos] = useState("ALL");
+  const [players, setPlayers] = useState([]);
+  const [loading, setLoading] = useState(false);
   const positions = ["ALL","C","1B","2B","3B","SS","OF","SP","RP"];
-  const list = FREE_AGENTS.filter((p) => pos === "ALL" || p.pos.includes(pos));
+
+  useEffect(() => {
+    const sp = espnData?.league?.scoringPeriodId || 1;
+    setLoading(true);
+    fetch(`/api/espn/players?scoringPeriodId=${sp}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.players) {
+          const mapped = data.players.map((entry) => {
+            const pp = entry.playerPoolEntry;
+            const pl = pp?.player;
+            return {
+              id:     pl?.id ?? Math.random(),
+              name:   pl?.fullName || "Unknown",
+              pos:    POS_LABEL[pl?.defaultPositionId] || "?",
+              status: "active",
+              own:    Math.round(pp?.percentOwned || 0),
+              news:   pl?.lastNewsDate ? "Recent news" : "No recent news",
+              proj14: 0,
+              ros:    0,
+              trend:  [],
+              team:   String(pl?.proTeamId || ""),
+            };
+          });
+          setPlayers(mapped);
+        } else {
+          setPlayers(FREE_AGENTS.map((p) => ({ ...p, status: "active" })));
+        }
+      })
+      .catch(() => setPlayers(FREE_AGENTS.map((p) => ({ ...p, status: "active" }))))
+      .finally(() => setLoading(false));
+  }, [espnData?.league?.scoringPeriodId]);
+
+  const list = players.filter((p) => pos === "ALL" || p.pos === pos || p.pos.includes(pos));
 
   return (
     <div className="page col gap-16">
       <div className="row gap-16" style={{ alignItems: "flex-end" }}>
         <div className="col gap-6">
-          <div className="eyebrow">Waivers · 3 claims pending · Process Wed 3:00 AM</div>
+          <div className="eyebrow">Free Agents · 2025 season</div>
           <h1 className="h1">Free agents</h1>
-          <div className="sub">Sorted by 14-day projection. Claim or add immediately if no waivers active.</div>
+          <div className="sub">Players available on waivers or free agency.</div>
         </div>
         <div className="spacer" />
-        <span className="pill mono">FAAB $48 / $100</span>
         <button className="btn"><Icons.filter /> Filters</button>
       </div>
 
@@ -149,7 +185,7 @@ export function WaiversPage({ openPlayer }) {
           <button key={x} className={`btn sm ${pos === x ? "primary" : ""}`} onClick={() => setPos(x)}>{x}</button>
         ))}
         <div className="spacer" />
-        <span className="muted mono" style={{ fontSize: 11 }}>{list.length} players</span>
+        <span className="muted mono" style={{ fontSize: 11 }}>{loading ? "Loading…" : `${list.length} players`}</span>
       </div>
 
       <div className="card">
@@ -157,31 +193,27 @@ export function WaiversPage({ openPlayer }) {
           <thead>
             <tr>
               <th style={{ paddingLeft: 14 }}>Player</th>
-              <th>News</th>
-              <th className="num">Proj 14d</th>
-              <th className="num">ROS</th>
-              <th className="num">Trend</th>
+              <th className="num">Pos</th>
               <th className="num">Owned</th>
               <th style={{ width: 120 }}></th>
             </tr>
           </thead>
           <tbody>
             {list.map((p, i) => (
-              <tr key={i}>
-                <td style={{ paddingLeft: 14 }}><PlayerChip p={{ ...p, status: "active" }} /></td>
-                <td className="muted" style={{ fontSize: 12 }}>{p.news}</td>
-                <td className="num"><b>{p.proj14}</b></td>
-                <td className="num muted">{p.ros}</td>
-                <td className="num"><span className="tag pos">{p.trend}</span></td>
-                <td className="num muted">{p.owned}%</td>
+              <tr key={i} onClick={() => openPlayer && openPlayer(p.id)} style={{ cursor: "pointer" }}>
+                <td style={{ paddingLeft: 14 }}><PlayerChip p={p} /></td>
+                <td className="num mono" style={{ fontSize: 11 }}>{p.pos}</td>
+                <td className="num muted">{p.own}%</td>
                 <td>
                   <div className="row gap-6">
-                    <button className="btn sm">Claim</button>
-                    <button className="btn sm primary"><Icons.plus /> Add</button>
+                    <button className="btn sm primary" onClick={(e) => e.stopPropagation()}><Icons.plus /> Add</button>
                   </div>
                 </td>
               </tr>
             ))}
+            {!loading && list.length === 0 && (
+              <tr><td colSpan={4} style={{ padding: 24, textAlign: "center", color: "var(--ink-2)" }}>No players found</td></tr>
+            )}
           </tbody>
         </table>
       </div>
