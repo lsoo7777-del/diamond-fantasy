@@ -17,7 +17,9 @@ const COOKIE_OPTS = {
 };
 
 export async function POST(request) {
-  const { swid, s2, leagueId, year } = await request.json();
+  const { swid, s2: rawS2, leagueId, year } = await request.json();
+  // Decode in case the user copied a URL-encoded value from the browser
+  const s2 = rawS2.includes("%") ? decodeURIComponent(rawS2) : rawS2;
 
   if (!swid || !s2 || !leagueId) {
     return NextResponse.json(
