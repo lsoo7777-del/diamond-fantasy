@@ -141,11 +141,6 @@ export default function TeamPage({ openPlayer, espnData }) {
             </table>
           </div>
 
-          {!useReal && (
-            <div className="card card-pad">
-              <div className="muted" style={{ fontSize: 12 }}>Connect ESPN to see your real roster here.</div>
-            </div>
-          )}
         </div>
       </div>
     </div>

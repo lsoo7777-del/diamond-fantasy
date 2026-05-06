@@ -106,9 +106,11 @@ export default function App() {
         );
       }
 
-      // Find user's team by matching SWID
+      // Find user's team by matching SWID (ESPN stores primaryOwner with braces e.g. "{GUID}")
       const myTeam = swidClean
-        ? league?.teams?.find((t) => (t.primaryOwner || "").toLowerCase() === swidClean)
+        ? league?.teams?.find((t) =>
+            (t.primaryOwner || "").replace(/[{}]/g, "").toLowerCase() === swidClean
+          )
         : null;
       const myTeamId = myTeam?.id;
 
