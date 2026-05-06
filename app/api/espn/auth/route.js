@@ -36,6 +36,7 @@ export async function POST(request) {
     );
   } catch (err) {
     if (err instanceof ESPNError) {
+      console.error("ESPNError:", err.status, err.body);
       if (err.status === 401 || err.status === 403) {
         return NextResponse.json(
           { error: "ESPN credentials are invalid or expired. Check your SWID and espn_s2 values." },
@@ -43,11 +44,12 @@ export async function POST(request) {
         );
       }
       return NextResponse.json(
-        { error: `ESPN returned ${err.status}. The league may be private or the ID incorrect.` },
+        { error: `ESPN returned ${err.status}: ${err.body?.slice?.(0, 200) ?? ""}` },
         { status: 502 }
       );
     }
-    return NextResponse.json({ error: "Failed to reach ESPN." }, { status: 502 });
+    console.error("ESPN fetch error:", err);
+    return NextResponse.json({ error: `Failed to reach ESPN: ${err.message}` }, { status: 502 });
   }
 
   // Store credentials in httpOnly cookies
